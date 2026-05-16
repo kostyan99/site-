@@ -9,20 +9,20 @@
 <title>Mirror Geometry</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action:none;}
+html,body{width:100%;height:100%;overflow:hidden;background:#080810;}
 
 #mg-root{
   position:fixed;top:0;left:0;
   width:100dvw;height:100dvh;
   background:#080810;
   cursor:none;
+  z-index:0;
 }
 
 #mg-c{
   display:block;
   position:absolute;top:0;left:0;
   width:100%;height:100%;
-  touch-action:none;
 }
 
 #mg-cursor{
@@ -51,6 +51,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   white-space:nowrap;
 }
 
+/* Toolbar живёт СНАРУЖИ canvas, поверх всего */
 #mg-toolbar{
   position:fixed;
   bottom:max(20px, env(safe-area-inset-bottom, 0px) + 12px);
@@ -60,30 +61,25 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   flex-direction:row;
   align-items:center;
   gap:8px;
-  background:rgba(12,12,22,0.88);
-  border:0.5px solid rgba(255,255,255,0.12);
+  background:rgba(12,12,22,0.92);
+  border:0.5px solid rgba(255,255,255,0.14);
   border-radius:50px;
-  padding:10px 18px;
-  backdrop-filter:blur(16px);
-  -webkit-backdrop-filter:blur(16px);
-  z-index:50;
+  padding:10px 20px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  z-index:200;
   white-space:nowrap;
   max-width:calc(100vw - 24px);
   overflow-x:auto;
   overflow-y:hidden;
   scrollbar-width:none;
   -ms-overflow-style:none;
+  /* touch-action разрешаем горизонтальный скролл только для тулбара */
+  touch-action:pan-x;
+  -webkit-overflow-scrolling:touch;
+  cursor:default;
 }
 #mg-toolbar::-webkit-scrollbar{display:none;}
-
-@media(max-width:600px){
-  #mg-toolbar{
-    bottom:max(16px, env(safe-area-inset-bottom, 0px) + 8px);
-    padding:8px 14px;
-    gap:6px;
-    border-radius:40px;
-  }
-}
 
 .mg-label{
   font-family:'Segoe UI',system-ui,sans-serif;
@@ -93,11 +89,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   user-select:none;
   flex-shrink:0;
 }
-@media(max-width:480px){.mg-label{display:none;}}
+@media(max-width:500px){.mg-label{display:none;}}
 
 .mg-sep{
-  width:0.5px;
-  height:28px;
+  width:0.5px;height:28px;
   background:rgba(255,255,255,0.1);
   margin:0 4px;
   flex-shrink:0;
@@ -119,13 +114,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   min-height:44px;
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
+  /* не даём браузеру перехватить тап */
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
 }
 .tb-btn:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);}
 .tb-btn.on{background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.35);}
-
-@media(max-width:480px){
-  .tb-btn{font-size:12px;padding:8px 12px;min-width:42px;min-height:44px;}
-}
 
 .lw-btn{
   width:44px;height:44px;
@@ -136,10 +131,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   cursor:pointer;
   transition:background 0.15s,border-color 0.15s;
   flex-shrink:0;
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
 }
 .lw-btn:hover{background:rgba(255,255,255,0.1);}
 .lw-btn.on{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.35);}
-.lw-btn svg{display:block;}
+.lw-btn svg{display:block;pointer-events:none;}
 
 #clr-btn{
   font-family:'Segoe UI',system-ui,sans-serif;
@@ -156,11 +154,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   min-height:44px;
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;
+  -webkit-user-select:none;
+  user-select:none;
 }
 #clr-btn:hover{background:rgba(220,80,80,0.15);color:#ff9090;}
-@media(max-width:480px){
-  #clr-btn{font-size:12px;padding:8px 13px;}
-}
 </style>
 </head>
 <body>
@@ -168,31 +166,34 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   <canvas id="mg-c"></canvas>
   <div id="mg-cursor"></div>
   <div id="mg-hint">рисуйте пальцем</div>
-  <div id="mg-toolbar">
-    <span class="mg-label">ось</span>
-    <button class="tb-btn on" data-sym="2">×2</button>
-    <button class="tb-btn"    data-sym="4">×4</button>
-    <button class="tb-btn"    data-sym="6">×6</button>
-    <button class="tb-btn"    data-sym="8">×8</button>
-    <button class="tb-btn"    data-sym="12">×12</button>
-    <div class="mg-sep"></div>
-    <span class="mg-label">линия</span>
-    <button class="lw-btn on" data-lw="1"  title="Тонкая">
-      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="1"  stroke-linecap="round"/></svg>
-    </button>
-    <button class="lw-btn"    data-lw="3"  title="Средняя">
-      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="3"  stroke-linecap="round"/></svg>
-    </button>
-    <button class="lw-btn"    data-lw="6"  title="Толстая">
-      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="6"  stroke-linecap="round"/></svg>
-    </button>
-    <button class="lw-btn"    data-lw="12" title="Очень толстая">
-      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="11" stroke-linecap="round"/></svg>
-    </button>
-    <div class="mg-sep"></div>
-    <button id="clr-btn">стереть</button>
-  </div>
 </div>
+
+<!-- Тулбар СНАРУЖИ #mg-root — отдельный fixed элемент, не дочерний canvas -->
+<div id="mg-toolbar">
+  <span class="mg-label">ось</span>
+  <button class="tb-btn on" data-sym="2">×2</button>
+  <button class="tb-btn"    data-sym="4">×4</button>
+  <button class="tb-btn"    data-sym="6">×6</button>
+  <button class="tb-btn"    data-sym="8">×8</button>
+  <button class="tb-btn"    data-sym="12">×12</button>
+  <div class="mg-sep"></div>
+  <span class="mg-label">линия</span>
+  <button class="lw-btn on" data-lw="1" title="Тонкая">
+    <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="1"  stroke-linecap="round"/></svg>
+  </button>
+  <button class="lw-btn"    data-lw="3" title="Средняя">
+    <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="3"  stroke-linecap="round"/></svg>
+  </button>
+  <button class="lw-btn"    data-lw="6" title="Толстая">
+    <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="6"  stroke-linecap="round"/></svg>
+  </button>
+  <button class="lw-btn"    data-lw="12" title="Очень толстая">
+    <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="11" stroke-linecap="round"/></svg>
+  </button>
+  <div class="mg-sep"></div>
+  <button id="clr-btn">стереть</button>
+</div>
+
 <script>
 (function(){
   const root = document.getElementById('mg-root');
@@ -211,10 +212,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
     '#a3e635','#f87171'
   ];
 
+  /* ---- Canvas setup ---- */
   function resize(){
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth;
     H = window.innerHeight;
+
+    /* Сохраняем текущий рисунок перед ресайзом */
+    let snapshot = null;
+    if(c.width > 0 && c.height > 0){
+      try{ snapshot = ctx.getImageData(0, 0, c.width, c.height); }catch(e){}
+    }
+
     c.width  = W * dpr;
     c.height = H * dpr;
     c.style.width  = W + 'px';
@@ -222,9 +231,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#080810';
     ctx.fillRect(0, 0, W, H);
+
+    /* Восстанавливаем рисунок если был */
+    if(snapshot){
+      try{ ctx.putImageData(snapshot, 0, 0); }catch(e){}
+    }
+
     drawGuide();
   }
 
+  /* Рисуем направляющие поверх существующего рисунка — НЕ очищаем холст */
   function drawGuide(){
     ctx.save();
     ctx.strokeStyle = 'rgba(255,255,255,0.035)';
@@ -244,6 +260,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
     ctx.restore();
   }
 
+  /* Стереть — только по явному запросу пользователя */
   function clearCanvas(){
     ctx.fillStyle = '#080810';
     ctx.fillRect(0, 0, W, H);
@@ -274,16 +291,15 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   }
 
   function moveCursor(x, y){
-    cur.style.left=x+'px'; cur.style.top=y+'px'; cur.style.opacity='1';
+    cur.style.left = x+'px'; cur.style.top = y+'px'; cur.style.opacity='1';
     const s = lw*4+24;
     cur.style.width=s+'px'; cur.style.height=s+'px';
-    cur.style.borderColor = COLORS[colorI % COLORS.length] + '66';
+    cur.style.borderColor = COLORS[colorI % COLORS.length]+'66';
     hideHint();
   }
 
   /* ---- Mouse ---- */
   root.addEventListener('mousedown', e=>{
-    if(e.target.closest('#mg-toolbar')) return;
     drawing=true; px=e.clientX; py=e.clientY; colorI++;
   });
   window.addEventListener('mousemove', e=>{
@@ -294,12 +310,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
   });
   window.addEventListener('mouseup', ()=>drawing=false);
 
-  /* ---- Touch: каждый палец рисует независимо своим цветом ---- */
+  /* ---- Touch на canvas (только root, не тулбар) ---- */
   root.addEventListener('touchstart', e=>{
+    /* Пропускаем тачи по тулбару — он снаружи root, но на всякий случай */
     e.preventDefault();
     hideHint();
     Array.from(e.changedTouches).forEach(t=>{
-      activeTouches[t.identifier] = { x: t.clientX, y: t.clientY, ci: colorI++ };
+      activeTouches[t.identifier] = { x:t.clientX, y:t.clientY, ci:colorI++ };
     });
   }, {passive:false});
 
@@ -330,7 +347,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action
       document.querySelectorAll('[data-sym]').forEach(b=>b.classList.remove('on'));
       btn.classList.add('on');
       sym = parseInt(btn.dataset.sym);
-      clearCanvas();
+      /* БАГ ИСПРАВЛЕН: только перерисовываем направляющие, холст НЕ чистим */
+      drawGuide();
     });
   });
 
