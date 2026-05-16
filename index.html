@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Mirror Geometry</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#080810;touch-action:none;}
+
+#mg-root{
+  position:fixed;top:0;left:0;
+  width:100dvw;height:100dvh;
+  background:#080810;
+  cursor:none;
+}
+
+#mg-c{
+  display:block;
+  position:absolute;top:0;left:0;
+  width:100%;height:100%;
+  touch-action:none;
+}
+
+#mg-cursor{
+  position:fixed;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.25);
+  transition:width 0.12s,height 0.12s,opacity 0.2s,border-color 0.3s;
+  z-index:100;
+  opacity:0;
+}
+@media(hover:none){#mg-cursor{display:none;}}
+
+#mg-hint{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Segoe UI',system-ui,sans-serif;
+  font-size:13px;letter-spacing:3px;
+  color:rgba(255,255,255,0.15);
+  pointer-events:none;
+  text-transform:uppercase;
+  transition:opacity 1.5s;
+  z-index:10;
+  text-align:center;
+  white-space:nowrap;
+}
+
+#mg-toolbar{
+  position:fixed;
+  bottom:max(20px, env(safe-area-inset-bottom, 0px) + 12px);
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:8px;
+  background:rgba(12,12,22,0.88);
+  border:0.5px solid rgba(255,255,255,0.12);
+  border-radius:50px;
+  padding:10px 18px;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  z-index:50;
+  white-space:nowrap;
+  max-width:calc(100vw - 24px);
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+#mg-toolbar::-webkit-scrollbar{display:none;}
+
+@media(max-width:600px){
+  #mg-toolbar{
+    bottom:max(16px, env(safe-area-inset-bottom, 0px) + 8px);
+    padding:8px 14px;
+    gap:6px;
+    border-radius:40px;
+  }
+}
+
+.mg-label{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  font-size:10px;letter-spacing:2px;
+  color:rgba(255,255,255,0.25);
+  text-transform:uppercase;
+  user-select:none;
+  flex-shrink:0;
+}
+@media(max-width:480px){.mg-label{display:none;}}
+
+.mg-sep{
+  width:0.5px;
+  height:28px;
+  background:rgba(255,255,255,0.1);
+  margin:0 4px;
+  flex-shrink:0;
+}
+
+.tb-btn{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:transparent;
+  border:0.5px solid rgba(255,255,255,0.15);
+  color:rgba(255,255,255,0.45);
+  font-size:14px;
+  padding:10px 18px;
+  border-radius:30px;
+  cursor:pointer;
+  letter-spacing:0.5px;
+  transition:background 0.15s,color 0.15s,border-color 0.15s;
+  line-height:1;
+  min-width:52px;
+  min-height:44px;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.tb-btn:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);}
+.tb-btn.on{background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.35);}
+
+@media(max-width:480px){
+  .tb-btn{font-size:12px;padding:8px 12px;min-width:42px;min-height:44px;}
+}
+
+.lw-btn{
+  width:44px;height:44px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:transparent;
+  border:0.5px solid rgba(255,255,255,0.15);
+  cursor:pointer;
+  transition:background 0.15s,border-color 0.15s;
+  flex-shrink:0;
+}
+.lw-btn:hover{background:rgba(255,255,255,0.1);}
+.lw-btn.on{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.35);}
+.lw-btn svg{display:block;}
+
+#clr-btn{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:transparent;
+  border:0.5px solid rgba(220,80,80,0.35);
+  color:rgba(220,100,100,0.75);
+  font-size:14px;
+  padding:10px 18px;
+  border-radius:30px;
+  cursor:pointer;
+  letter-spacing:0.5px;
+  transition:background 0.15s,color 0.15s;
+  line-height:1;
+  min-height:44px;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+#clr-btn:hover{background:rgba(220,80,80,0.15);color:#ff9090;}
+@media(max-width:480px){
+  #clr-btn{font-size:12px;padding:8px 13px;}
+}
+</style>
+</head>
+<body>
+<div id="mg-root">
+  <canvas id="mg-c"></canvas>
+  <div id="mg-cursor"></div>
+  <div id="mg-hint">рисуйте пальцем</div>
+  <div id="mg-toolbar">
+    <span class="mg-label">ось</span>
+    <button class="tb-btn on" data-sym="2">×2</button>
+    <button class="tb-btn"    data-sym="4">×4</button>
+    <button class="tb-btn"    data-sym="6">×6</button>
+    <button class="tb-btn"    data-sym="8">×8</button>
+    <button class="tb-btn"    data-sym="12">×12</button>
+    <div class="mg-sep"></div>
+    <span class="mg-label">линия</span>
+    <button class="lw-btn on" data-lw="1"  title="Тонкая">
+      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="1"  stroke-linecap="round"/></svg>
+    </button>
+    <button class="lw-btn"    data-lw="3"  title="Средняя">
+      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="3"  stroke-linecap="round"/></svg>
+    </button>
+    <button class="lw-btn"    data-lw="6"  title="Толстая">
+      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="6"  stroke-linecap="round"/></svg>
+    </button>
+    <button class="lw-btn"    data-lw="12" title="Очень толстая">
+      <svg width="24" height="24"><line x1="4" y1="12" x2="20" y2="12" stroke="rgba(255,255,255,0.75)" stroke-width="11" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mg-sep"></div>
+    <button id="clr-btn">стереть</button>
+  </div>
+</div>
+<script>
+(function(){
+  const root = document.getElementById('mg-root');
+  const c    = document.getElementById('mg-c');
+  const ctx  = c.getContext('2d');
+  const cur  = document.getElementById('mg-cursor');
+  const hint = document.getElementById('mg-hint');
+
+  let W, H, sym = 2, lw = 1, drawing = false;
+  let px = 0, py = 0, colorI = 0, hintHidden = false;
+  let activeTouches = {};
+
+  const COLORS = [
+    '#a78bfa','#67e8f9','#f472b6','#34d399',
+    '#fbbf24','#60a5fa','#fb923c','#e879f9',
+    '#a3e635','#f87171'
+  ];
+
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    c.width  = W * dpr;
+    c.height = H * dpr;
+    c.style.width  = W + 'px';
+    c.style.height = H + 'px';
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#080810';
+    ctx.fillRect(0, 0, W, H);
+    drawGuide();
+  }
+
+  function drawGuide(){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([4, 12]);
+    for(let i = 0; i < sym; i++){
+      const ang = i * Math.PI * 2 / sym - Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(W/2, H/2);
+      ctx.lineTo(
+        W/2 + Math.cos(ang) * Math.max(W,H) * 1.5,
+        H/2 + Math.sin(ang) * Math.max(W,H) * 1.5
+      );
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function clearCanvas(){
+    ctx.fillStyle = '#080810';
+    ctx.fillRect(0, 0, W, H);
+    drawGuide();
+    colorI = 0;
+  }
+
+  function symLine(x1, y1, x2, y2){
+    const col = COLORS[colorI % COLORS.length];
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const cx = W/2, cy = H/2;
+    for(let i = 0; i < sym; i++){
+      const ang = i * Math.PI * 2 / sym;
+      const cos = Math.cos(ang), sin = Math.sin(ang);
+      const dx1=x1-cx, dy1=y1-cy, dx2=x2-cx, dy2=y2-cy;
+      const rx1=dx1*cos-dy1*sin, ry1=dx1*sin+dy1*cos;
+      const rx2=dx2*cos-dy2*sin, ry2=dx2*sin+dy2*cos;
+      ctx.beginPath(); ctx.moveTo(cx+rx1,cy+ry1); ctx.lineTo(cx+rx2,cy+ry2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+rx1,cy-ry1); ctx.lineTo(cx+rx2,cy-ry2); ctx.stroke();
+    }
+  }
+
+  function hideHint(){
+    if(!hintHidden){ hint.style.opacity='0'; hintHidden=true; }
+  }
+
+  function moveCursor(x, y){
+    cur.style.left=x+'px'; cur.style.top=y+'px'; cur.style.opacity='1';
+    const s = lw*4+24;
+    cur.style.width=s+'px'; cur.style.height=s+'px';
+    cur.style.borderColor = COLORS[colorI % COLORS.length] + '66';
+    hideHint();
+  }
+
+  /* ---- Mouse ---- */
+  root.addEventListener('mousedown', e=>{
+    if(e.target.closest('#mg-toolbar')) return;
+    drawing=true; px=e.clientX; py=e.clientY; colorI++;
+  });
+  window.addEventListener('mousemove', e=>{
+    moveCursor(e.clientX, e.clientY);
+    if(!drawing) return;
+    symLine(px, py, e.clientX, e.clientY);
+    px=e.clientX; py=e.clientY;
+  });
+  window.addEventListener('mouseup', ()=>drawing=false);
+
+  /* ---- Touch: каждый палец рисует независимо своим цветом ---- */
+  root.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    hideHint();
+    Array.from(e.changedTouches).forEach(t=>{
+      activeTouches[t.identifier] = { x: t.clientX, y: t.clientY, ci: colorI++ };
+    });
+  }, {passive:false});
+
+  root.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    Array.from(e.changedTouches).forEach(t=>{
+      const prev = activeTouches[t.identifier];
+      if(!prev) return;
+      const saved = colorI;
+      colorI = prev.ci;
+      symLine(prev.x, prev.y, t.clientX, t.clientY);
+      colorI = saved;
+      activeTouches[t.identifier].x = t.clientX;
+      activeTouches[t.identifier].y = t.clientY;
+    });
+  }, {passive:false});
+
+  root.addEventListener('touchend', e=>{
+    Array.from(e.changedTouches).forEach(t=>{ delete activeTouches[t.identifier]; });
+  }, {passive:false});
+  root.addEventListener('touchcancel', e=>{
+    Array.from(e.changedTouches).forEach(t=>{ delete activeTouches[t.identifier]; });
+  }, {passive:false});
+
+  /* ---- Controls ---- */
+  document.querySelectorAll('[data-sym]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-sym]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      sym = parseInt(btn.dataset.sym);
+      clearCanvas();
+    });
+  });
+
+  document.querySelectorAll('[data-lw]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-lw]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      lw = parseFloat(btn.dataset.lw);
+    });
+  });
+
+  document.getElementById('clr-btn').addEventListener('click', clearCanvas);
+
+  window.addEventListener('resize', ()=>setTimeout(resize, 30));
+  resize();
+})();
+</script>
+</body>
+</html>
